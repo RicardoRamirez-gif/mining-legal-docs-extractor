@@ -9,6 +9,7 @@ guarda los resultados en un CSV.
 import os
 import sys
 import glob
+import json
 import pandas as pd
 
 from auditoria_extractor.pipeline import process_pdf
@@ -30,11 +31,20 @@ def main(input_folder: str):
         print("[WARN] No se encontró información para exportar.")
         return
 
+    # --- CSV ---
     df = pd.DataFrame(all_rows)
     os.makedirs(OUTPUT_DIR, exist_ok=True)
+
     out_path = os.path.join(OUTPUT_DIR, "auditoria_resultados.csv")
     df.to_csv(out_path, index=False, encoding="utf-8-sig")
     print(f"[OK] Resultados guardados en: {out_path}")
+
+    # --- JSON ---
+    json_path = os.path.join(OUTPUT_DIR, "auditoria_resultados.json")
+    with open(json_path, "w", encoding="utf-8") as jf:
+        json.dump(all_rows, jf, ensure_ascii=False, indent=2)
+    print(f"[OK] Resultados JSON guardados en: {json_path}")
+
 
 
 if __name__ == "__main__":

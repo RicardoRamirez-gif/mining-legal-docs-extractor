@@ -1,13 +1,13 @@
-﻿archivo,pagina,mode,rol_nacional,nombre_concesion,fojas,numero_inscripcion,anio_inscripcion,conservador,fecha_texto,utm_vertices
-Inscr. CURAUMA 2 (3).pdf,1,digital,,"Curauma 2, 1 Al 15",,5.0,2020.0,Conservador de Minas de Valparaiso,Treinta De Diciembre Del Año Dos Mil Veinte,[]
-Inscr. CURAUMA 2 (3).pdf,2,ocr,,Numero 5 Euroam,,5.0,2020.0,,Chile A Treinta De Diciembre Del Año Dos Mil Veinte,[]
-Inscr. CURAUMA 2 (3).pdf,3,ocr,,"De Las Pertenencias Curauma 2, 1 Al 15, La Que Se Orden",,,,Conservador de Minas de Valparaíso,,[]
-Inscr. CURAUMA 2 (3).pdf,4,ocr,,Con El N,,,,,,[]
-Inscr. CURAUMA 2 (3).pdf,5,ocr,,No Se Pudieron Replantear Ni Monumentar Los Linderos V,,,,,,"[{'norte': 6333850.0, 'este': 258350.0, 'source': 'words'}]"
-Inscr. CURAUMA 2 (3).pdf,6,ocr,,,,,,,,[]
-Inscr. CURAUMA 2 (3).pdf,7,ocr,,No Se Pudieron Replantear Ni Monumentar Los Linderos V,,,,,,"[{'norte': 6333850.0, 'este': 258350.0, 'source': 'words'}]"
-Inscr. CURAUMA 2 (3).pdf,8,ocr,,,,,,,,[]
-Inscr. CURAUMA 2 (3).pdf,9,ocr,,Fue Dd Vinculado Previa Autorizaci,,,,,,[]
-Inscr. CURAUMA 2 (3).pdf,10,ocr,,No Se Pudieron Replantear Al Ni Monumentar Los Linderos V,,,,,,[]
-Inscr. CURAUMA 2 (3).pdf,11,ocr,,,,,,,,[]
-Inscr. CURAUMA 2 (3).pdf,12,ocr,,,,,,,,[]
+﻿archivo,pagina,mode,rol_nacional,nombre_concesion,fojas,fojas_vuelta,numero_inscripcion,anio_inscripcion,titular,conservador,fecha_texto,utm_vertices
+Inscr. CURAUMA 2 (3).pdf,1,digital,,"Curauma 2, 1 Al 15",7.0,vta,5.0,2020.0,Euroamerica Seguros De Vida S.A,Conservador de Minas de Valparaiso,Treinta De Diciembre Del Año Dos Mil Veinte,[]
+Inscr. CURAUMA 2 (3).pdf,2,ocr,,Numero 5 Euroam,,,5.0,2020.0,Vida Sd En Valparaíso,,Chile A Treinta De Diciembre Del Año Dos Mil Veinte,[]
+Inscr. CURAUMA 2 (3).pdf,3,ocr,,"De Las Pertenencias Curauma 2, 1 Al 15, La Que Se Orden",15.0,vta,,,Valparaíso,Conservador de Minas de Valparaíso,,[]
+Inscr. CURAUMA 2 (3).pdf,4,ocr,,Con El N,,,,,Veintisiete De Junio De Dos Mil Diecisiete,,,[]
+Inscr. CURAUMA 2 (3).pdf,5,ocr,,No Se Pudieron Replantear Ni Monumentar Los Linderos V,,,,,Interés Se Hicieron Referidas Al Datum Provisorio La Canoa Mil Novecientos Cincuenta Y Seis,,,"[{'norte': 6333850.0, 'este': 258350.0, 'source': 'words'}]"
+Inscr. CURAUMA 2 (3).pdf,6,ocr,,,,,,,Ellas La Forma De Un Cuadrado De Cien Coma Cero Cero M De Largo Con El Azimut Cien Coma Cero Cero Cero Cero Gds Por Cien Coma Cero Cero M De Ancho En El Azimut Cien Coma Cero Cero Cero Cero Gds Y Una Hectárea De Superficie,,,[]
+Inscr. CURAUMA 2 (3).pdf,7,ocr,,No Se Pudieron Replantear Ni Monumentar Los Linderos V,,,,,Interés Se Hicieron Referidas Al Datum Provisorio La Canoa Mil Novecientos Cincuenta Y Seis,,,"[{'norte': 6333850.0, 'este': 258350.0, 'source': 'words'}]"
+Inscr. CURAUMA 2 (3).pdf,8,ocr,,,,,,,Ellas La Forma De Un Cuadrado De Cien Coma Cero Cero M De Largo Con El Azimut Cien Coma Cero Cero Cero Cero Gds Por Cien Coma Cero Cero M De Ancho En El Azimut Cien Coma Cero Cero Cero Cero Gds Y Una Hectárea De Superficie,,,[]
+Inscr. CURAUMA 2 (3).pdf,9,ocr,,Fue Dd Vinculado Previa Autorizaci,,,,,Se Debe Seguir Por Aproximadamente Cuatrocientos Metros Por La Avenida Curauma Norte En Dirección Al Noroeste. En Este Punto Se Toma A La Izquierda En Avenida Camino De La Luz Por Unos Cuatrocientos Ochenta Metros Más,,,[]
+Inscr. CURAUMA 2 (3).pdf,10,ocr,,No Se Pudieron Replantear Al Ni Monumentar Los Linderos V,,,,,La Mensura. Desde El Hm Con Azimut De Trescientos Sesenta Y Uno Coma Ocho Mil Novecientos Veintiocho Gds Y A Una Distancia De Doscientos Cincuenta Y Ocho Coma Trece M Se Encuentra El Vértice L Uno De Las Pertenencias. Operación De Mensura. En La Operación De Mensura No Se Pudieron Replantear Al Ni Monumentar Los Linderos Vértices,,,[]
+Inscr. CURAUMA 2 (3).pdf,11,ocr,,,,,,,Cien Coma Cero Cero M Se Ubican Los Vértices Interiores De Uno Al Cuatro Respectivamente. Entre Los Linderos Vértices L Dos Y L Tres A Las Distancias Sucesivas E Iguales De Cien Coma Cero Cero M Se Ubican Los Vértices Interiores Diez Y Dieciséis Respectivamente. Entre Los Linderos Vértices L Tres Y L Cuatro A Las Distancias Sucesivas E Iguales De Cien Coma Cero Cero M Se Ubican Los Vértices Interiores Veinte,,,[]
+Inscr. CURAUMA 2 (3).pdf,12,ocr,,,,,,,Ciento Veintidós Coma Diecinueve M Se Ubica El P.I.. Demasias. No Se Generaron Demasías. Linderos. No Se Construyeron Los Linderos Vértices Por Encontrarse Éstos Dentro De Zonas Forestales. En El Hm Se Construyó Un Monumento De Un Metro Cuadrado De Base De Cero Coma Treinta M De Altura Sobre El Suelo Y Cero Coma Veinte M Empotrado En El Suelo,,,[]

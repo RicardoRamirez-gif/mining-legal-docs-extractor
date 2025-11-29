@@ -81,6 +81,33 @@ def extract_nombre_concesion(text: str) -> Optional[str]:
 
     return None
 
+def extract_titular(text: str) -> Optional[str]:
+    """
+    Extrae el titular de la inscripción.
+    Ejemplos:
+    - '... MENSURA "X" DE EUROAMERICA SEGUROS DE VIDA S.A., INSCRITA EL ...'
+    - '... A NOMBRE DE JUAN PÉREZ GONZÁLEZ ...'
+    - '... SOLICITADA POR MINERA CURAUMA LTDA. ...'
+    """
+
+    norm = _normalize_spaces(text)
+
+    patrones = [
+        r"DE\s+([A-ZÁÉÍÓÚÜÑ0-9 \.&\-]+?)(?:,|\sINSCRITA|\sROLANTE|\sAÑO)",
+        r"A\s+NOMBRE\s+DE\s+([A-ZÁÉÍÓÚÜÑ0-9 \.&\-]+?)(?:,|\sINSCRITA|\sROLANTE|\sAÑO)",
+        r"POR\s+([A-ZÁÉÍÓÚÜÑ0-9 \.&\-]+?)(?:,|\sINSCRITA|\sROLANTE|\sAÑO)",
+        r"TITULAR\s+([A-ZÁÉÍÓÚÜÑ0-9 \.&\-]+?)(?:,|\sINSCRITA|\sROLANTE|\sAÑO)",
+    ]
+
+    for pat in patrones:
+        m = re.search(pat, norm, flags=re.IGNORECASE)
+        if m:
+            titular = m.group(1).strip().strip(" ,.;")
+            # Normalizar espacios y mayúsculas
+            return titular.title()
+
+    return None
+
 
 def extract_rol_nacional(text: str) -> Optional[str]:
     """
@@ -114,21 +141,44 @@ def extract_fojas_numero_anio(text: str) -> Tuple[Optional[int], Optional[int], 
 
     # FOJAS
     fojas_val: Optional[int] = None
-    m_fojas_text = re.search(r"FOJAS\s+([A-ZÁÉÍÓÚÜÑ ]+?)(?:\s+NUMERO|\s+N[°º]|\s+DEL\s+REGISTRO)", norm, flags=re.IGNORECASE)
+
+    # 1) FOJAS ... (en letras o números) antes de NUMERO / N° / DEL REGISTRO
+    m_fojas_text = re.search(
+        r"FOJAS\s+([A-ZÁÉÍÓÚÜÑ0-9 \.,º\-]+?)(?:\s+NUMERO|\s+N[°º]|\s+DEL\s+REGISTRO)",
+        norm,
+        flags=re.IGNORECASE,
+    )
     if m_fojas_text:
-        palabra_fojas = m_fojas_text.group(1).strip()
-        # Quitamos palabras tipo 'VUELTA'
-        palabra_fojas = re.sub(r"\bVUELTA\b", "", palabra_fojas, flags=re.IGNORECASE).strip()
-        if palabra_fojas:
-            fojas_val = text_number_to_int(palabra_fojas)
+        palabra_fojas = m_fojas_text.group(1)
+
+        # limpiamos marcas de vuelta / vta
+        palabra_fojas = re.sub(r"\bVUELTA\b", "", palabra_fojas, flags=re.IGNORECASE)
+        palabra_fojas = re.sub(r"\bVTA\.?\b", "", palabra_fojas, flags=re.IGNORECASE)
+
+        # limpiamos puntuación suelta
+        palabra_fojas = palabra_fojas.strip(" ,.;")
+
+        # si hay dígitos, priorizamos el número directo (ej: "7", "7 vta")
+        m_num_fojas = re.search(r"([0-9]{1,4})", palabra_fojas)
+        if m_num_fojas:
+            try:
+                fojas_val = int(m_num_fojas.group(1))
+            except ValueError:
+                fojas_val = None
+        else:
+            # si no hay dígitos, probamos interpretarlo como número en palabras ("siete", "doce", etc.)
+            if palabra_fojas:
+                fojas_val = text_number_to_int(palabra_fojas)
+
     else:
-        # backup: FOJAS <número>
+        # 2) backup: FOJAS <número> simple
         m_fojas_num = re.search(r"FOJAS\s+([0-9\.]+)", norm, flags=re.IGNORECASE)
         if m_fojas_num:
             try:
                 fojas_val = int(m_fojas_num.group(1).replace(".", ""))
             except ValueError:
                 fojas_val = None
+
 
     # NÚMERO INSCRIPCIÓN
     num_val: Optional[int] = None
@@ -165,6 +215,19 @@ def extract_fojas_numero_anio(text: str) -> Tuple[Optional[int], Optional[int], 
 
     return fojas_val, num_val, anio_val
 
+def extract_fojas_vuelta(text: str) -> str:
+    """
+    Devuelve 'vta' si el texto menciona que la fojas es vuelta.
+    Si no menciona nada, devuelve ''.
+    """
+    norm = _normalize_spaces(text)
+
+    # Casos reconocidos: VUELTA, VTA, VTA.
+    if re.search(r"FOJAS\s+[A-ZÁÉÍÓÚÜÑ0-9 \.,º\-]*(VUELTA|VTA\.?)", norm, flags=re.IGNORECASE):
+        return "vta"
+
+    return ""
+
 
 def extract_fecha_texto(text: str) -> Optional[str]:
     """
@@ -183,6 +246,25 @@ def extract_fecha_texto(text: str) -> Optional[str]:
         return _normalize_spaces(m.group(1)).title()
     return None
 
+def classify_utm_match(text: str, start_idx: int, end_idx: int) -> str:
+    """
+    Mira el contexto alrededor del match (±80 caracteres) y trata de
+    clasificar el tipo de coordenada: 'hito_mensura', 'vertice', 'lindero', etc.
+    """
+    window_size = 80
+    inicio = max(0, start_idx - window_size)
+    fin = min(len(text), end_idx + window_size)
+    contexto = text[inicio:fin].upper()
+
+    if "HITO DE MENSURA" in contexto or "H.M." in contexto:
+        return "hito_mensura"
+    if "VERTICE" in contexto or "VÉRTICE" in contexto or "V-1" in contexto or "V-2" in contexto:
+        return "vertice"
+    if "LINDERO" in contexto:
+        return "lindero"
+    return "desconocido"
+
+
 
 # -----------------------------
 # Parsers de coordenadas UTM
@@ -191,33 +273,46 @@ def extract_fecha_texto(text: str) -> Optional[str]:
 def extract_utm_from_numbers(text: str) -> List[Dict[str, Any]]:
     """
     Extrae coordenadas UTM cuando están como números, p.ej.:
-    N=6.333.850,00  E=313.500,00
-    Norte 6.333.850 Este 313.500
+    N=6.333.850,00  E=258.350,00
+    Norte 6.333.850 metros, Este 258.350 metros
+    Coordenadas U.T.M. Norte 6.333.850 Este 258.350
     """
     results: List[Dict[str, Any]] = []
 
     norm = _normalize_spaces(text)
 
     patrones = [
-        r"(N[= ]\s*([0-9\.\,]+).{0,20}E[= ]\s*([0-9\.\,]+))",
-        r"(NORTE\s+([0-9\.\,]+).{0,20}(ESTE|E)\s+([0-9\.\,]+))",
+        # Caso genérico: Norte primero, luego Este
+        r"(?:N(?:ORTE)?)[\s:=]*"
+        r"(?P<norte>[0-9\.\,]+)"
+        r"(?:\s*(?:METROS|M))?"
+        r".{0,80}?"   # ← dejamos espacio para 'metros', 'UTM', etc.
+        r"(?:E(?:STE)?)[\s:=]*"
+        r"(?P<este>[0-9\.\,]+)",
+
+        # Variante: Este primero, luego Norte (por si acaso)
+        r"(?:E(?:STE)?)[\s:=]*"
+        r"(?P<este>[0-9\.\,]+)"
+        r"(?:\s*(?:METROS|M))?"
+        r".{0,80}?"
+        r"(?:N(?:ORTE)?)[\s:=]*"
+        r"(?P<norte>[0-9\.\,]+)",
     ]
 
     for pat in patrones:
         for m in re.finditer(pat, norm, flags=re.IGNORECASE):
-            # Dependiendo del patrón, tomamos grupos
-            nums = [g for g in m.groups()[1:] if g is not None]
-            if len(nums) >= 2:
-                n_raw, e_raw = nums[0], nums[1]
-                try:
-                    n_val = float(n_raw.replace(".", "").replace(",", "."))
-                    e_val = float(e_raw.replace(".", "").replace(",", "."))
-                    results.append({"norte": n_val, "este": e_val, "source": "digits"})
-                except ValueError:
-                    continue
+            n_raw = m.groupdict().get("norte")
+            e_raw = m.groupdict().get("este")
+            if not n_raw or not e_raw:
+                continue
+            try:
+                n_val = float(n_raw.replace(".", "").replace(",", "."))
+                e_val = float(e_raw.replace(".", "").replace(",", "."))
+                results.append({"norte": n_val, "este": e_val, "source": "digits"})
+            except ValueError:
+                continue
 
     return results
-
 
 def extract_utm_from_words(text: str) -> List[Dict[str, Any]]:
     """
@@ -253,6 +348,8 @@ def extract_utm_from_words(text: str) -> List[Dict[str, Any]]:
 
 
 
+
+
 def extract_utm_vertices(text: str) -> List[Dict[str, Any]]:
     """Combina extracción numérica y en letras."""
     verts: List[Dict[str, Any]] = []
@@ -266,20 +363,21 @@ def extract_utm_vertices(text: str) -> List[Dict[str, Any]]:
 # -----------------------------
 
 def extract_all(text: str) -> Dict[str, Any]:
-    """
-    Parser principal: dado el texto de una página, intenta extraer
-    todos los campos relevantes disponibles.
-    """
     data: Dict[str, Any] = {}
 
-    # Intentamos siempre, aunque algunas cosas solo estarán en la carátula
     data["rol_nacional"] = extract_rol_nacional(text)
     data["nombre_concesion"] = extract_nombre_concesion(text)
 
     fojas, num_insc, anio = extract_fojas_numero_anio(text)
     data["fojas"] = fojas
+
+    # NUEVO CAMPO: texto 'vta' o ''
+    data["fojas_vuelta"] = extract_fojas_vuelta(text)
+
     data["numero_inscripcion"] = num_insc
     data["anio_inscripcion"] = anio
+
+    data["titular"] = extract_titular(text)  
 
     data["conservador"] = extract_conservador(text)
     data["fecha_texto"] = extract_fecha_texto(text)
@@ -287,3 +385,4 @@ def extract_all(text: str) -> Dict[str, Any]:
     data["utm_vertices"] = extract_utm_vertices(text)
 
     return data
+
