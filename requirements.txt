@@ -1,0 +1,6 @@
+pandas
+pymupdf       # se importa como "fitz"
+pytesseract
+Pillow
+regex
+opencv-python

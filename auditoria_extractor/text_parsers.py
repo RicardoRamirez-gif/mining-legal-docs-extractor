@@ -1,186 +1,289 @@
+# auditoria_extractor/text_parsers.py
+
 """
 text_parsers.py
-Funciones para extraer campos relevantes desde el texto plano
-de inscripciones mineras chilenas (inscripciones, publicaciones, etc.).
+Funciones para extraer campos relevantes de textos legales mineros
+(obtenidos desde PDFs del Conservador de Minas via texto directo u OCR).
 """
 
+from __future__ import annotations
+
 import regex as re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
+
 from .number_parser import text_number_to_int
 
 
-MESES = (
-    "enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|"
-    "octubre|noviembre|diciembre"
-)
+# -----------------------------
+# Utilidades generales
+# -----------------------------
+
+def _normalize_spaces(text: str) -> str:
+    """Colapsa espacios múltiples y normaliza saltos de línea simples."""
+    # Reemplaza saltos de línea por espacios en algunas búsquedas
+    return re.sub(r"\s+", " ", text, flags=re.UNICODE).strip()
 
 
-def extract_basic_inscription_fields(text: str) -> Dict[str, Any]:
+# -----------------------------
+# Parsers de la carátula (certificado Conservador)
+# -----------------------------
+
+def extract_conservador(text: str) -> Optional[str]:
     """
-    Extrae campos básicos típicos de una inscripción:
-    - ROL Nacional
-    - Nombre de la concesión
-    - Fojas, número, año
-    - Conservador
-    - Fecha (si aparece en encabezado)
+    Intenta extraer el nombre del Conservador de Minas, por ejemplo:
+    'CONSERVADOR DE MINAS DE VALPARAÍSO'
     """
+    # Usamos versión con y sin tildes
+    patrones = [
+        r"CONSERVADOR(?:A)? DE MINAS DE\s+([A-ZÁÉÍÓÚÜÑ ]+)",
+        r"CONSERVADOR(?:A)? DE MINAS\s+DE\s+([A-ZÁÉÍÓÚÜÑ ]+)",
+    ]
 
-    # ROL Nacional (ej: ROL NACIONAL N° 02201-0380-3)
-    rol = re.search(
-        r"ROL\s+(?:NAC(?:IONAL)?\s*)?N?[°º]?\s*([\d\.\-\/]+)",
-        text,
-        flags=re.IGNORECASE
-    )
-
-    # Nombre de la concesión (muy genérico, luego lo afinamos con ejemplos reales)
-    nombre = re.search(
-        r"concesi[oó]n(?:\s+de\s+[a-záéíóúñ]+)?(?:\s+denominada)?\s+[\"“']?([A-Z0-9\s\-]+)[\"”']?",
-        text,
-        flags=re.IGNORECASE
-    )
-
-    # Fojas, número, año (ej: "a fojas 123 número 456 del año 2010")
-    fojas = re.search(r"fojas\s+(\d+)", text, flags=re.IGNORECASE)
-    numero = re.search(r"n[uú]mero\s+(\d+)", text, flags=re.IGNORECASE)
-    anio = re.search(r"(?:a[nñ]o|del a[nñ]o)\s+(\d{4})", text, flags=re.IGNORECASE)
-
-    # Conservador (ej: "Conservador de Minas de Antofagasta")
-    conservador = re.search(
-        r"Conservador(?: de Minas)? de\s+([A-Za-zÁÉÍÓÚÑ\s]+)",
-        text,
-        flags=re.IGNORECASE
-    )
-
-    # Fecha tipo: "Antofagasta, 15 de marzo de 2010"
-    fecha = re.search(
-        rf"(\d{{1,2}}\s+de\s+(?:{MESES})\s+de\s+\d{{4}})",
-        text,
-        flags=re.IGNORECASE
-    )
-
-    return {
-        "rol_nacional": rol.group(1).strip() if rol else None,
-        "nombre_concesion": nombre.group(1).strip() if nombre else None,
-        "fojas": int(fojas.group(1)) if fojas else None,
-        "numero_inscripcion": int(numero.group(1)) if numero else None,
-        "anio_inscripcion": int(anio.group(1)) if anio else None,
-        "conservador": conservador.group(1).strip() if conservador else None,
-        "fecha_texto": fecha.group(1).strip() if fecha else None,
-    }
+    for pat in patrones:
+        m = re.search(pat, text, flags=re.IGNORECASE)
+        if m:
+            lugar = m.group(1).strip()
+            # Normalizamos capitalización básica
+            lugar_norm = lugar.title()
+            return f"Conservador de Minas de {lugar_norm}"
+    return None
 
 
-def _limpiar_numero_coord(cadena: str) -> Optional[float]:
+def extract_nombre_concesion(text: str) -> Optional[str]:
     """
-    Limpia un número de coordenadas:
-    - Elimina puntos de miles.
-    - Convierte coma decimal en punto.
-    - Devuelve float o None.
+    Busca patrones tipo:
+    INSCRIPCION DE MENSURA "CURAUMA 2, 1 AL 15"
+    MENSURA "CURAUMA 2, 1 AL 15"
+    CONCESIÓN MINERA DE EXPLOTACIÓN CURAUMA 2, 1 AL 15
     """
-    if not cadena:
-        return None
-    s = cadena.strip()
-    s = s.replace(".", "").replace(" ", "")
-    s = s.replace(",", ".")
-    try:
-        return float(s)
-    except ValueError:
-        return None
+    # Unificamos espacios
+    norm = _normalize_spaces(text)
+
+    # Patrones probables
+    patrones = [
+        r"INSCRIPCION DE MENSURA\s+\"?([A-Z0-9 ,/º\-]+)\"?",
+        r"MENSURA\s+\"?([A-Z0-9 ,/º\-]+)\"?",
+        r"CONCESI[ÓO]N MINERA DE EXPLOTACI[ÓO]N\s+\"?([A-Z0-9 ,/º\-]+)\"?",
+    ]
+
+    for pat in patrones:
+        m = re.search(pat, norm, flags=re.IGNORECASE)
+        if m:
+            nombre = m.group(1).strip(" \"")
+            # evitamos capturar texto genérico muy corto
+            if len(nombre) >= 4:
+                return nombre.title()
+
+    # fallback: a veces el nombre va entre comillas solo
+    m2 = re.search(r"\"([A-Z0-9 ,/º\-]+)\"", norm)
+    if m2 and len(m2.group(1)) >= 4:
+        return m2.group(1).title()
+
+    return None
 
 
-def extract_utm_coordinates(text: str) -> List[Dict[str, Any]]:
+def extract_rol_nacional(text: str) -> Optional[str]:
     """
-    Extrae bloques de coordenadas UTM típicos:
-
-    Ejemplos que intentará capturar:
-      - "Norte: 7.012.345 m Este: 312.456 m Huso 19 Sur Datum PSAD-56"
-      - "N 7012345 E 312456 Huso 19 Datum WGS84"
-
-    Retorna una lista de vértices (no asume aún polígono cerrado).
+    Extrae el Rol Nacional, p.ej.:
+    'ROL NACIONAL N° 02201-01234-3'
+    'ROL NACIONAL Nº 2201-1234-3'
     """
+    patrones = [
+        r"ROL\s+NACIONAL\s+N[°º]\s*([0-9\.\-–]+)",
+        r"ROL\s+NACIONAL\s+([0-9\.\-–]+)",
+    ]
 
-    coords: List[Dict[str, Any]] = []
+    for pat in patrones:
+        m = re.search(pat, text, flags=re.IGNORECASE)
+        if m:
+            return m.group(1).strip()
+    return None
 
-    # Patrón general para pares Norte/Este
-    # Buscamos frases donde aparezcan ambas componentes relativamente cerca.
-    patron_bloque = re.compile(
-        r"""
-        (?:
-            (?:NORTE|N)\s*[:=]?\s*([\d\.\,]{5,})   # valor norte
-            .*?
-            (?:ESTE|E)\s*[:=]?\s*([\d\.\,]{5,})    # valor este
-        )
-        |
-        (?:
-            (?:ESTE|E)\s*[:=]?\s*([\d\.\,]{5,})    # valor este
-            .*?
-            (?:NORTE|N)\s*[:=]?\s*([\d\.\,]{5,})   # valor norte
-        )
-        """,
-        flags=re.IGNORECASE | re.DOTALL | re.VERBOSE,
+
+def extract_fojas_numero_anio(text: str) -> Tuple[Optional[int], Optional[int], Optional[int]]:
+    """
+    Extrae:
+    - fojas (en letras o números)
+    - número de inscripción (en letras o números)
+    - año (en letras o números)
+
+    Ejemplos:
+    'ROLANTE A FOJAS SIETE VUELTA NUMERO CINCO DEL REGISTRO... DEL AÑO DOS MIL VEINTE'
+    """
+    norm = _normalize_spaces(text)
+
+    # FOJAS
+    fojas_val: Optional[int] = None
+    m_fojas_text = re.search(r"FOJAS\s+([A-ZÁÉÍÓÚÜÑ ]+?)(?:\s+NUMERO|\s+N[°º]|\s+DEL\s+REGISTRO)", norm, flags=re.IGNORECASE)
+    if m_fojas_text:
+        palabra_fojas = m_fojas_text.group(1).strip()
+        # Quitamos palabras tipo 'VUELTA'
+        palabra_fojas = re.sub(r"\bVUELTA\b", "", palabra_fojas, flags=re.IGNORECASE).strip()
+        if palabra_fojas:
+            fojas_val = text_number_to_int(palabra_fojas)
+    else:
+        # backup: FOJAS <número>
+        m_fojas_num = re.search(r"FOJAS\s+([0-9\.]+)", norm, flags=re.IGNORECASE)
+        if m_fojas_num:
+            try:
+                fojas_val = int(m_fojas_num.group(1).replace(".", ""))
+            except ValueError:
+                fojas_val = None
+
+    # NÚMERO INSCRIPCIÓN
+    num_val: Optional[int] = None
+    m_num_text = re.search(r"NUMERO\s+([A-ZÁÉÍÓÚÜÑ ]+?)(?:\s+DEL\s+REGISTRO|\s+DEL\s+A[NÑ]O|\s+DEL\s+AÑO)", norm, flags=re.IGNORECASE)
+    if m_num_text:
+        palabra_num = m_num_text.group(1).strip()
+        num_val = text_number_to_int(palabra_num)
+    else:
+        m_num_num = re.search(r"NUMERO\s+([0-9\.]+)", norm, flags=re.IGNORECASE)
+        if m_num_num:
+            try:
+                num_val = int(m_num_num.group(1).replace(".", ""))
+            except ValueError:
+                num_val = None
+
+    # AÑO
+    anio_val: Optional[int] = None
+    # primero en letras
+    m_anio_text = re.search(
+        r"DEL\s+A[NÑ]O\s+([A-ZÁÉÍÓÚÜÑ ]+?)(?:[\,\.;]|$)",
+        norm,
+        flags=re.IGNORECASE,
+    )
+    if m_anio_text:
+        palabra_anio = m_anio_text.group(1).strip()
+        anio_val = text_number_to_int(palabra_anio)
+    else:
+        m_anio_num = re.search(r"DEL\s+A[NÑ]O\s+([0-9]{4})", norm, flags=re.IGNORECASE)
+        if m_anio_num:
+            try:
+                anio_val = int(m_anio_num.group(1))
+            except ValueError:
+                anio_val = None
+
+    return fojas_val, num_val, anio_val
+
+
+def extract_fecha_texto(text: str) -> Optional[str]:
+    """
+    Extrae la fecha en texto, por ejemplo:
+    'TREINTA DE DICIEMBRE DEL AÑO DOS MIL VEINTE'
+    Por ahora la devolvemos como string crudo.
+    """
+    # Permitimos día en letras, mes en letras, resto libre
+    meses = (
+        "ENERO|FEBRERO|MARZO|ABRIL|MAYO|JUNIO|JULIO|AGOSTO|SEPTIEMBRE|OCTUBRE|NOVIEMBRE|DICIEMBRE"
     )
 
-    # Huso
-    patron_huso = re.compile(
-        r"huso\s+(\d{1,2})",
-        flags=re.IGNORECASE
-    )
+    pat = rf"([A-ZÁÉÍÓÚÜÑ ]+?\s+DE\s+(?:{meses})\s+DEL\s+A[NÑ]O\s+[A-ZÁÉÍÓÚÜÑ ]+)"
+    m = re.search(pat, text, flags=re.IGNORECASE)
+    if m:
+        return _normalize_spaces(m.group(1)).title()
+    return None
 
-    # Datum (muy genérico: PSAD-56, WGS84, SIRGAS, etc.)
-    patron_datum = re.compile(
-        r"(PSAD-?56|WGS-?84|SIRGAS(?:\s+2000)?)",
-        flags=re.IGNORECASE
-    )
 
-    # Buscamos todos los bloques donde aparezcan N/E
-    for match in patron_bloque.finditer(text):
-        g = match.groups()
+# -----------------------------
+# Parsers de coordenadas UTM
+# -----------------------------
 
-        # El patrón tiene 4 grupos opcionales:
-        # caso 1: norte, este, None, None
-        # caso 2: None, None, este, norte
-        if g[0] and g[1]:
-            norte_raw, este_raw = g[0], g[1]
-        elif g[2] and g[3]:
-            este_raw, norte_raw = g[2], g[3]
-        else:
-            continue
+def extract_utm_from_numbers(text: str) -> List[Dict[str, Any]]:
+    """
+    Extrae coordenadas UTM cuando están como números, p.ej.:
+    N=6.333.850,00  E=313.500,00
+    Norte 6.333.850 Este 313.500
+    """
+    results: List[Dict[str, Any]] = []
 
-        norte = _limpiar_numero_coord(norte_raw)
-        este = _limpiar_numero_coord(este_raw)
+    norm = _normalize_spaces(text)
 
-        # Buscamos huso y datum cerca del bloque encontrado
-        texto_local = text[match.start(): match.end() + 200]  # pequeña ventana después
+    patrones = [
+        r"(N[= ]\s*([0-9\.\,]+).{0,20}E[= ]\s*([0-9\.\,]+))",
+        r"(NORTE\s+([0-9\.\,]+).{0,20}(ESTE|E)\s+([0-9\.\,]+))",
+    ]
 
-        huso_m = patron_huso.search(texto_local)
-        datum_m = patron_datum.search(texto_local)
+    for pat in patrones:
+        for m in re.finditer(pat, norm, flags=re.IGNORECASE):
+            # Dependiendo del patrón, tomamos grupos
+            nums = [g for g in m.groups()[1:] if g is not None]
+            if len(nums) >= 2:
+                n_raw, e_raw = nums[0], nums[1]
+                try:
+                    n_val = float(n_raw.replace(".", "").replace(",", "."))
+                    e_val = float(e_raw.replace(".", "").replace(",", "."))
+                    results.append({"norte": n_val, "este": e_val, "source": "digits"})
+                except ValueError:
+                    continue
 
-        huso = int(huso_m.group(1)) if huso_m else None
-        datum = datum_m.group(1).upper().replace(" ", "") if datum_m else None
+    return results
 
-        coords.append(
-            {
-                "norte": norte,
-                "este": este,
-                "huso": huso,
-                "datum": datum,
-                "fuente": "numerico",
-            }
-        )
 
-    return coords
+def extract_utm_from_words(text: str) -> List[Dict[str, Any]]:
+    """
+    Extrae coordenadas UTM cuando están en letras, p.ej.:
+    'Norte seis millones trescientos treinta y tres mil ochocientos cincuenta coma cero cero metros,
+     Este dos millones ciento veinte mil coma cero cero metros'
+    """
+    results: List[Dict[str, Any]] = []
 
+    norm = _normalize_spaces(text)
+
+    # Patrón simplificado:
+    # - Busca 'NORTE <palabras> COMA ... (ESTE|E) <palabras> COMA'
+    pat = r"NORTE\s+([a-záéíóúüñ\s]+?)\s+COMA.*?(?:ESTE|E)\s+([a-záéíóúüñ\s]+?)\s+COMA"
+
+    for m in re.finditer(pat, norm, flags=re.IGNORECASE | re.DOTALL):
+        norte_txt = m.group(1).strip()
+        este_txt = m.group(2).strip()
+
+        n_val = text_number_to_int(norte_txt)
+        e_val = text_number_to_int(este_txt)
+
+        if n_val is not None and e_val is not None:
+            results.append(
+                {
+                    "norte": float(n_val),
+                    "este": float(e_val),
+                    "source": "words",
+                }
+            )
+
+    return results
+
+
+
+def extract_utm_vertices(text: str) -> List[Dict[str, Any]]:
+    """Combina extracción numérica y en letras."""
+    verts: List[Dict[str, Any]] = []
+    verts.extend(extract_utm_from_numbers(text))
+    verts.extend(extract_utm_from_words(text))
+    return verts
+
+
+# -----------------------------
+# Wrapper principal
+# -----------------------------
 
 def extract_all(text: str) -> Dict[str, Any]:
     """
-    Función de alto nivel:
-    - Extrae campos básicos de inscripción
-    - Extrae coordenadas UTM
-    (Más adelante podemos agregar superficie, titular, etc.)
+    Parser principal: dado el texto de una página, intenta extraer
+    todos los campos relevantes disponibles.
     """
-    insc = extract_basic_inscription_fields(text)
-    utm = extract_utm_coordinates(text)
+    data: Dict[str, Any] = {}
 
-    return {
-        **insc,
-        "utm_vertices": utm,
-    }
+    # Intentamos siempre, aunque algunas cosas solo estarán en la carátula
+    data["rol_nacional"] = extract_rol_nacional(text)
+    data["nombre_concesion"] = extract_nombre_concesion(text)
+
+    fojas, num_insc, anio = extract_fojas_numero_anio(text)
+    data["fojas"] = fojas
+    data["numero_inscripcion"] = num_insc
+    data["anio_inscripcion"] = anio
+
+    data["conservador"] = extract_conservador(text)
+    data["fecha_texto"] = extract_fecha_texto(text)
+
+    data["utm_vertices"] = extract_utm_vertices(text)
+
+    return data
