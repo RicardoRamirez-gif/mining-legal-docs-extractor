@@ -9,10 +9,14 @@
     "fojas_vuelta": "vta",
     "numero_inscripcion": 5,
     "anio_inscripcion": 2020,
-    "titular": "Euroamerica Seguros De Vida S.A",
     "conservador": "Conservador de Minas de Valparaiso",
     "fecha_texto": "Treinta De Diciembre Del Año Dos Mil Veinte",
-    "utm_vertices": []
+    "titular": "Euroamerica Seguros De Vida S",
+    "utm_vertices": [],
+    "cedulas_identidad": [],
+    "domicilios": [],
+    "juzgados": [],
+    "causas_rol": []
   },
   {
     "archivo": "Inscr. CURAUMA 2 (3).pdf",
@@ -24,10 +28,18 @@
     "fojas_vuelta": "",
     "numero_inscripcion": 5,
     "anio_inscripcion": 2020,
-    "titular": "Vida Sd En Valparaíso",
     "conservador": null,
     "fecha_texto": "Chile A Treinta De Diciembre Del Año Dos Mil Veinte",
-    "utm_vertices": []
+    "titular": null,
+    "utm_vertices": [],
+    "cedulas_identidad": [],
+    "domicilios": [
+      "Avenida Apoquindo"
+    ],
+    "juzgados": [
+      "Juzgado Civil de Valparaíso. Causa rol"
+    ],
+    "causas_rol": []
   },
   {
     "archivo": "Inscr. CURAUMA 2 (3).pdf",
@@ -35,14 +47,18 @@
     "mode": "ocr",
     "rol_nacional": null,
     "nombre_concesion": "De Las Pertenencias Curauma 2, 1 Al 15, La Que Se Orden",
-    "fojas": 15,
-    "fojas_vuelta": "vta",
+    "fojas": null,
+    "fojas_vuelta": "",
     "numero_inscripcion": null,
     "anio_inscripcion": null,
-    "titular": "Valparaíso",
     "conservador": "Conservador de Minas de Valparaíso",
     "fecha_texto": null,
-    "utm_vertices": []
+    "titular": null,
+    "utm_vertices": [],
+    "cedulas_identidad": [],
+    "domicilios": [],
+    "juzgados": [],
+    "causas_rol": []
   },
   {
     "archivo": "Inscr. CURAUMA 2 (3).pdf",
@@ -54,10 +70,14 @@
     "fojas_vuelta": "",
     "numero_inscripcion": null,
     "anio_inscripcion": null,
-    "titular": "Veintisiete De Junio De Dos Mil Diecisiete",
     "conservador": null,
     "fecha_texto": null,
-    "utm_vertices": []
+    "titular": null,
+    "utm_vertices": [],
+    "cedulas_identidad": [],
+    "domicilios": [],
+    "juzgados": [],
+    "causas_rol": []
   },
   {
     "archivo": "Inscr. CURAUMA 2 (3).pdf",
@@ -69,16 +89,20 @@
     "fojas_vuelta": "",
     "numero_inscripcion": null,
     "anio_inscripcion": null,
-    "titular": "Interés Se Hicieron Referidas Al Datum Provisorio La Canoa Mil Novecientos Cincuenta Y Seis",
     "conservador": null,
     "fecha_texto": null,
+    "titular": null,
     "utm_vertices": [
       {
         "norte": 6333850.0,
         "este": 258350.0,
         "source": "words"
       }
-    ]
+    ],
+    "cedulas_identidad": [],
+    "domicilios": [],
+    "juzgados": [],
+    "causas_rol": []
   },
   {
     "archivo": "Inscr. CURAUMA 2 (3).pdf",
@@ -90,10 +114,16 @@
     "fojas_vuelta": "",
     "numero_inscripcion": null,
     "anio_inscripcion": null,
-    "titular": "Ellas La Forma De Un Cuadrado De Cien Coma Cero Cero M De Largo Con El Azimut Cien Coma Cero Cero Cero Cero Gds Por Cien Coma Cero Cero M De Ancho En El Azimut Cien Coma Cero Cero Cero Cero Gds Y Una Hectárea De Superficie",
     "conservador": null,
     "fecha_texto": null,
-    "utm_vertices": []
+    "titular": null,
+    "utm_vertices": [],
+    "cedulas_identidad": [],
+    "domicilios": [],
+    "juzgados": [
+      "Juzgado Civil de Valparaíso."
+    ],
+    "causas_rol": []
   },
   {
     "archivo": "Inscr. CURAUMA 2 (3).pdf",
@@ -105,16 +135,20 @@
     "fojas_vuelta": "",
     "numero_inscripcion": null,
     "anio_inscripcion": null,
-    "titular": "Interés Se Hicieron Referidas Al Datum Provisorio La Canoa Mil Novecientos Cincuenta Y Seis",
     "conservador": null,
     "fecha_texto": null,
+    "titular": null,
     "utm_vertices": [
       {
         "norte": 6333850.0,
         "este": 258350.0,
         "source": "words"
       }
-    ]
+    ],
+    "cedulas_identidad": [],
+    "domicilios": [],
+    "juzgados": [],
+    "causas_rol": []
   },
   {
     "archivo": "Inscr. CURAUMA 2 (3).pdf",
@@ -126,10 +160,16 @@
     "fojas_vuelta": "",
     "numero_inscripcion": null,
     "anio_inscripcion": null,
-    "titular": "Ellas La Forma De Un Cuadrado De Cien Coma Cero Cero M De Largo Con El Azimut Cien Coma Cero Cero Cero Cero Gds Por Cien Coma Cero Cero M De Ancho En El Azimut Cien Coma Cero Cero Cero Cero Gds Y Una Hectárea De Superficie",
     "conservador": null,
     "fecha_texto": null,
-    "utm_vertices": []
+    "titular": null,
+    "utm_vertices": [],
+    "cedulas_identidad": [],
+    "domicilios": [],
+    "juzgados": [
+      "Juzgado Civil de Valparaíso."
+    ],
+    "causas_rol": []
   },
   {
     "archivo": "Inscr. CURAUMA 2 (3).pdf",
@@ -141,10 +181,14 @@
     "fojas_vuelta": "",
     "numero_inscripcion": null,
     "anio_inscripcion": null,
-    "titular": "Se Debe Seguir Por Aproximadamente Cuatrocientos Metros Por La Avenida Curauma Norte En Dirección Al Noroeste. En Este Punto Se Toma A La Izquierda En Avenida Camino De La Luz Por Unos Cuatrocientos Ochenta Metros Más",
     "conservador": null,
     "fecha_texto": null,
-    "utm_vertices": []
+    "titular": null,
+    "utm_vertices": [],
+    "cedulas_identidad": [],
+    "domicilios": [],
+    "juzgados": [],
+    "causas_rol": []
   },
   {
     "archivo": "Inscr. CURAUMA 2 (3).pdf",
@@ -156,10 +200,14 @@
     "fojas_vuelta": "",
     "numero_inscripcion": null,
     "anio_inscripcion": null,
-    "titular": "La Mensura. Desde El Hm Con Azimut De Trescientos Sesenta Y Uno Coma Ocho Mil Novecientos Veintiocho Gds Y A Una Distancia De Doscientos Cincuenta Y Ocho Coma Trece M Se Encuentra El Vértice L Uno De Las Pertenencias. Operación De Mensura. En La Operación De Mensura No Se Pudieron Replantear Al Ni Monumentar Los Linderos Vértices",
     "conservador": null,
     "fecha_texto": null,
-    "utm_vertices": []
+    "titular": null,
+    "utm_vertices": [],
+    "cedulas_identidad": [],
+    "domicilios": [],
+    "juzgados": [],
+    "causas_rol": []
   },
   {
     "archivo": "Inscr. CURAUMA 2 (3).pdf",
@@ -171,10 +219,14 @@
     "fojas_vuelta": "",
     "numero_inscripcion": null,
     "anio_inscripcion": null,
-    "titular": "Cien Coma Cero Cero M Se Ubican Los Vértices Interiores De Uno Al Cuatro Respectivamente. Entre Los Linderos Vértices L Dos Y L Tres A Las Distancias Sucesivas E Iguales De Cien Coma Cero Cero M Se Ubican Los Vértices Interiores Diez Y Dieciséis Respectivamente. Entre Los Linderos Vértices L Tres Y L Cuatro A Las Distancias Sucesivas E Iguales De Cien Coma Cero Cero M Se Ubican Los Vértices Interiores Veinte",
     "conservador": null,
     "fecha_texto": null,
-    "utm_vertices": []
+    "titular": "Euroamérica Seguros De Vida S",
+    "utm_vertices": [],
+    "cedulas_identidad": [],
+    "domicilios": [],
+    "juzgados": [],
+    "causas_rol": []
   },
   {
     "archivo": "Inscr. CURAUMA 2 (3).pdf",
@@ -186,9 +238,15 @@
     "fojas_vuelta": "",
     "numero_inscripcion": null,
     "anio_inscripcion": null,
-    "titular": "Ciento Veintidós Coma Diecinueve M Se Ubica El P.I.. Demasias. No Se Generaron Demasías. Linderos. No Se Construyeron Los Linderos Vértices Por Encontrarse Éstos Dentro De Zonas Forestales. En El Hm Se Construyó Un Monumento De Un Metro Cuadrado De Base De Cero Coma Treinta M De Altura Sobre El Suelo Y Cero Coma Veinte M Empotrado En El Suelo",
     "conservador": null,
     "fecha_texto": null,
-    "utm_vertices": []
+    "titular": null,
+    "utm_vertices": [],
+    "cedulas_identidad": [],
+    "domicilios": [
+      "Av"
+    ],
+    "juzgados": [],
+    "causas_rol": []
   }
 ]

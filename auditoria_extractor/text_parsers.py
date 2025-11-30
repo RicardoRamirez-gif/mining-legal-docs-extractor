@@ -84,29 +84,82 @@ def extract_nombre_concesion(text: str) -> Optional[str]:
 def extract_titular(text: str) -> Optional[str]:
     """
     Extrae el titular de la inscripción.
-    Ejemplos:
-    - '... MENSURA "X" DE EUROAMERICA SEGUROS DE VIDA S.A., INSCRITA EL ...'
-    - '... A NOMBRE DE JUAN PÉREZ GONZÁLEZ ...'
-    - '... SOLICITADA POR MINERA CURAUMA LTDA. ...'
+    Se prioriza:
+    - Carátula tipo: INSCRIPCION DE MENSURA "X" DE <TITULAR>, INSCRITA EL...
+    - Expresiones: A NOMBRE DE <...>, DE PROPIEDAD DE <...>, TITULAR <...>.
+    Intentamos ser más precisos y evitar párrafos largos.
     """
-
     norm = _normalize_spaces(text)
 
-    patrones = [
-        r"DE\s+([A-ZÁÉÍÓÚÜÑ0-9 \.&\-]+?)(?:,|\sINSCRITA|\sROLANTE|\sAÑO)",
-        r"A\s+NOMBRE\s+DE\s+([A-ZÁÉÍÓÚÜÑ0-9 \.&\-]+?)(?:,|\sINSCRITA|\sROLANTE|\sAÑO)",
-        r"POR\s+([A-ZÁÉÍÓÚÜÑ0-9 \.&\-]+?)(?:,|\sINSCRITA|\sROLANTE|\sAÑO)",
-        r"TITULAR\s+([A-ZÁÉÍÓÚÜÑ0-9 \.&\-]+?)(?:,|\sINSCRITA|\sROLANTE|\sAÑO)",
-    ]
+    candidatos: List[str] = []
 
-    for pat in patrones:
-        m = re.search(pat, norm, flags=re.IGNORECASE)
-        if m:
-            titular = m.group(1).strip().strip(" ,.;")
-            # Normalizar espacios y mayúsculas
-            return titular.title()
+    # 1) Patrón típico de carátula: INSCRIPCION DE MENSURA ... DE <TITULAR>, INSCRITA EL ...
+    pat_caratula = (
+        r"INSCRIPCION DE MENSURA\s+\"[A-Z0-9 ,/º\-]+\"\s+DE\s+"
+        r"([A-ZÁÉÍÓÚÜÑ0-9 \.&\-]+?)(?:,|\sINSCRITA|\sROLANTE|\sDEL\s+AÑO|\.)"
+    )
+    for m in re.finditer(pat_caratula, norm, flags=re.IGNORECASE):
+        candidatos.append(m.group(1).strip())
 
-    return None
+    # 2) A NOMBRE DE <...>
+    pat_nombre = r"A\s+NOMBRE\s+DE\s+([A-ZÁÉÍÓÚÜÑ0-9 \.&\-]+?)(?:,|\sINSCRITA|\sROLANTE|\sDEL\s+AÑO|\.)"
+    for m in re.finditer(pat_nombre, norm, flags=re.IGNORECASE):
+        candidatos.append(m.group(1).strip())
+
+    # 3) DE PROPIEDAD DE <...>
+    pat_prop = r"DE\s+PROPIEDAD\s+DE\s+([A-ZÁÉÍÓÚÜÑ0-9 \.&\-]+?)(?:,|\sINSCRITA|\sROLANTE|\sDEL\s+AÑO|\.)"
+    for m in re.finditer(pat_prop, norm, flags=re.IGNORECASE):
+        candidatos.append(m.group(1).strip())
+
+    # 4) TITULAR <...>
+    pat_tit = r"TITULAR\s+([A-ZÁÉÍÓÚÜÑ0-9 \.&\-]+?)(?:,|\sINSCRITA|\sROLANTE|\sDEL\s+AÑO|\.)"
+    for m in re.finditer(pat_tit, norm, flags=re.IGNORECASE):
+        candidatos.append(m.group(1).strip())
+
+    if not candidatos:
+        return None
+
+    # Filtro de calidad de candidatos
+    def es_titular_valido(s: str) -> bool:
+        s_clean = s.strip(" ,.;")
+        if not s_clean:
+            return False
+
+        palabras = s_clean.split()
+        # Evitar cosas demasiado cortas o demasiado largas
+        if len(palabras) < 2 or len(palabras) > 8:
+            return False
+
+        # Evitar que empiece con palabras que no son nombre/razón social
+        primeras = {"SE", "LA", "EL", "ENTRE", "CINCUENTA", "CIENTO", "CERO", "INTERES"}
+        if palabras[0].upper() in primeras:
+            return False
+
+        return True
+
+    def score_titular(s: str) -> int:
+        """Más puntaje si parece razón social."""
+        s_u = s.upper()
+        score = 0
+        if any(tag in s_u for tag in ["S.A", "LTDA", "LIMITADA", "SPA", "S.P.A"]):
+            score += 3
+        if any(tag in s_u for tag in ["MINERA", "COMPAÑÍA", "COMPANIA", "SOCIEDAD"]):
+            score += 2
+        # Bonus por 2+ palabras
+        if len(s.split()) >= 2:
+            score += 1
+        return score
+
+    candidatos_filtrados = [c.strip(" ,.;") for c in candidatos if es_titular_valido(c)]
+
+    if not candidatos_filtrados:
+        return None
+
+    # Elegimos el mejor según score
+    candidatos_filtrados.sort(key=score_titular, reverse=True)
+    titular = candidatos_filtrados[0]
+    return titular.title()
+
 
 
 def extract_rol_nacional(text: str) -> Optional[str]:
@@ -127,51 +180,48 @@ def extract_rol_nacional(text: str) -> Optional[str]:
     return None
 
 
-def extract_fojas_numero_anio(text: str) -> Tuple[Optional[int], Optional[int], Optional[int]]:
+def extract_fojas_numero_anio(text: str) -> Tuple[Optional[int], Optional[int], Optional[int], Optional[str]]:
     """
     Extrae:
     - fojas (en letras o números)
     - número de inscripción (en letras o números)
     - año (en letras o números)
+    - indicador de 'vuelta' (fojas_vuelta): 'vta' o ''
 
     Ejemplos:
     'ROLANTE A FOJAS SIETE VUELTA NUMERO CINCO DEL REGISTRO... DEL AÑO DOS MIL VEINTE'
     """
     norm = _normalize_spaces(text)
 
-    # FOJAS
-    fojas_val: Optional[int] = None
+    # ------------------------------------
+    # Detectar si dice VUELTA / VTA / VTA.
+    # ------------------------------------
+    fojas_vuelta: Optional[str] = ""
 
-    # 1) FOJAS ... (en letras o números) antes de NUMERO / N° / DEL REGISTRO
+    # Tomamos un trozo alrededor de la palabra FOJAS
+    m_fojas_ctx = re.search(r"FOJAS\s+(.{0,80})", norm, flags=re.IGNORECASE)
+    if m_fojas_ctx:
+        ctx = m_fojas_ctx.group(1)
+        if re.search(r"\b(VTA\.?|VUELTA)\b", ctx, flags=re.IGNORECASE):
+            fojas_vuelta = "vta"
+
+    # ------------------------------------
+    # FOJAS (número)
+    # ------------------------------------
+    fojas_val: Optional[int] = None
     m_fojas_text = re.search(
-        r"FOJAS\s+([A-ZÁÉÍÓÚÜÑ0-9 \.,º\-]+?)(?:\s+NUMERO|\s+N[°º]|\s+DEL\s+REGISTRO)",
+        r"FOJAS\s+([A-ZÁÉÍÓÚÜÑ ]+?)(?:\s+VTA\.?|\s+VUELTA|\s+NUMERO|\s+N[°º]|\s+DEL\s+REGISTRO)",
         norm,
         flags=re.IGNORECASE,
     )
     if m_fojas_text:
-        palabra_fojas = m_fojas_text.group(1)
-
-        # limpiamos marcas de vuelta / vta
-        palabra_fojas = re.sub(r"\bVUELTA\b", "", palabra_fojas, flags=re.IGNORECASE)
-        palabra_fojas = re.sub(r"\bVTA\.?\b", "", palabra_fojas, flags=re.IGNORECASE)
-
-        # limpiamos puntuación suelta
-        palabra_fojas = palabra_fojas.strip(" ,.;")
-
-        # si hay dígitos, priorizamos el número directo (ej: "7", "7 vta")
-        m_num_fojas = re.search(r"([0-9]{1,4})", palabra_fojas)
-        if m_num_fojas:
-            try:
-                fojas_val = int(m_num_fojas.group(1))
-            except ValueError:
-                fojas_val = None
-        else:
-            # si no hay dígitos, probamos interpretarlo como número en palabras ("siete", "doce", etc.)
-            if palabra_fojas:
-                fojas_val = text_number_to_int(palabra_fojas)
-
+        palabra_fojas = m_fojas_text.group(1).strip()
+        # Quitamos palabras tipo 'VUELTA' si quedara por error
+        palabra_fojas = re.sub(r"\bVUELTA\b", "", palabra_fojas, flags=re.IGNORECASE).strip()
+        if palabra_fojas:
+            fojas_val = text_number_to_int(palabra_fojas)
     else:
-        # 2) backup: FOJAS <número> simple
+        # backup: FOJAS <número>
         m_fojas_num = re.search(r"FOJAS\s+([0-9\.]+)", norm, flags=re.IGNORECASE)
         if m_fojas_num:
             try:
@@ -179,10 +229,15 @@ def extract_fojas_numero_anio(text: str) -> Tuple[Optional[int], Optional[int], 
             except ValueError:
                 fojas_val = None
 
-
+    # ------------------------------------
     # NÚMERO INSCRIPCIÓN
+    # ------------------------------------
     num_val: Optional[int] = None
-    m_num_text = re.search(r"NUMERO\s+([A-ZÁÉÍÓÚÜÑ ]+?)(?:\s+DEL\s+REGISTRO|\s+DEL\s+A[NÑ]O|\s+DEL\s+AÑO)", norm, flags=re.IGNORECASE)
+    m_num_text = re.search(
+        r"NUMERO\s+([A-ZÁÉÍÓÚÜÑ ]+?)(?:\s+DEL\s+REGISTRO|\s+DEL\s+A[NÑ]O|\s+DEL\s+AÑO)",
+        norm,
+        flags=re.IGNORECASE,
+    )
     if m_num_text:
         palabra_num = m_num_text.group(1).strip()
         num_val = text_number_to_int(palabra_num)
@@ -194,7 +249,9 @@ def extract_fojas_numero_anio(text: str) -> Tuple[Optional[int], Optional[int], 
             except ValueError:
                 num_val = None
 
+    # ------------------------------------
     # AÑO
+    # ------------------------------------
     anio_val: Optional[int] = None
     # primero en letras
     m_anio_text = re.search(
@@ -213,7 +270,8 @@ def extract_fojas_numero_anio(text: str) -> Tuple[Optional[int], Optional[int], 
             except ValueError:
                 anio_val = None
 
-    return fojas_val, num_val, anio_val
+    return fojas_val, num_val, anio_val, fojas_vuelta
+
 
 def extract_fojas_vuelta(text: str) -> str:
     """
@@ -264,6 +322,104 @@ def classify_utm_match(text: str, start_idx: int, end_idx: int) -> str:
         return "lindero"
     return "desconocido"
 
+# -----------------------------
+# Parsers de cédulas, domicilios, juzgado, causa rol
+# -----------------------------
+
+def extract_cedulas_identidad(text: str) -> List[str]:
+    """
+    Extrae posibles Cédulas/RUT desde el texto.
+    Ejemplos:
+    - "CEDULA NACIONAL DE IDENTIDAD N° 12.345.678-9"
+    - "RUT 12.345.678-9"
+    """
+    resultados: List[str] = []
+    # Trabajamos sobre el texto tal cual (respetando puntos y guiones)
+    patrones = [
+        r"CEDULA(?: NACIONAL)? DE IDENTIDAD\s+N[°º]?\s*([\d\.\-kK]+)",
+        r"CEDULA(?: NACIONAL)? DE IDENTIDAD\s+NUMERO\s*([\d\.\-kK]+)",
+        r"RUT\s*([\d\.\-kK]+)",
+    ]
+
+    for pat in patrones:
+        for m in re.finditer(pat, text, flags=re.IGNORECASE):
+            ci = m.group(1).strip()
+            if ci and ci not in resultados:
+                resultados.append(ci)
+
+    return resultados
+
+
+def extract_domicilios(text: str) -> List[str]:
+    """
+    Extrae posibles domicilios, buscando frases tipo:
+    - 'domiciliado en Avenida ...'
+    - 'domiciliada en calle ...'
+    - 'con domicilio en ...'
+    """
+    resultados: List[str] = []
+    norm = _normalize_spaces(text)
+
+    patrones = [
+        r"DOMICILIAD[OA]\s+EN\s+([^\,\.;]+)",
+        r"CON\s+DOMICILIO\s+EN\s+([^\,\.;]+)",
+        r"DOMICILIO\s+EN\s+([^\,\.;]+)",
+    ]
+
+    for pat in patrones:
+        for m in re.finditer(pat, norm, flags=re.IGNORECASE):
+            frag = m.group(1).strip()
+            if frag:
+                # Normalizamos un poco la dirección (capitalización básica)
+                dom = frag.strip()
+                # Evitamos duplicados
+                if dom not in resultados:
+                    resultados.append(dom)
+
+    return resultados
+
+
+def extract_juzgados(text: str) -> List[str]:
+    """
+    Extrae nombres de juzgados, p.ej.:
+    - 'Juzgado de Letras de Valparaíso'
+    - 'Segundo Juzgado Civil de Santiago'
+    """
+    resultados: List[str] = []
+    norm = _normalize_spaces(text)
+
+    # Tomamos desde 'JUZGADO' hasta el próximo signo fuerte o salto lógico
+    pat = r"(JUZGADO\s+[A-ZÁÉÍÓÚÜÑ0-9\s\-DELCIVILRA\.]+)"
+    for m in re.finditer(pat, norm, flags=re.IGNORECASE):
+        j = m.group(1).strip()
+        if j and j not in resultados:
+            resultados.append(j)
+
+    return resultados
+
+
+def extract_causas_rol(text: str) -> List[str]:
+    """
+    Extrae posibles 'causa rol', p.ej.:
+    - 'causa Rol N° C-1234-2020'
+    - 'causa rol 1234-2020'
+    Sólo consideramos cuando aparece la palabra 'causa'.
+    """
+    resultados: List[str] = []
+    norm = _normalize_spaces(text)
+
+    patrones = [
+        r"CAUSA\s+ROL\s+N[°º]?\s*([A-Z0-9\.\-\/]+)",
+        r"CAUSA\s+ROL\s+([A-Z0-9\.\-\/]+)",
+    ]
+
+    for pat in patrones:
+        for m in re.finditer(pat, norm, flags=re.IGNORECASE):
+            rol = m.group(1).strip()
+            if rol and rol not in resultados:
+                resultados.append(rol)
+
+    return resultados
 
 
 # -----------------------------
@@ -363,26 +519,40 @@ def extract_utm_vertices(text: str) -> List[Dict[str, Any]]:
 # -----------------------------
 
 def extract_all(text: str) -> Dict[str, Any]:
+    """
+    Parser principal: dado el texto de una página, intenta extraer
+    todos los campos relevantes disponibles.
+    """
     data: Dict[str, Any] = {}
 
+    # Campos "clásicos"
     data["rol_nacional"] = extract_rol_nacional(text)
     data["nombre_concesion"] = extract_nombre_concesion(text)
 
-    fojas, num_insc, anio = extract_fojas_numero_anio(text)
+    fojas, num_insc, anio, fojas_vta = extract_fojas_numero_anio(text)
+
     data["fojas"] = fojas
-
-    # NUEVO CAMPO: texto 'vta' o ''
-    data["fojas_vuelta"] = extract_fojas_vuelta(text)
-
+    data["fojas_vuelta"] = fojas_vta   # 👈 AÑADIDO
     data["numero_inscripcion"] = num_insc
     data["anio_inscripcion"] = anio
-
-    data["titular"] = extract_titular(text)  
 
     data["conservador"] = extract_conservador(text)
     data["fecha_texto"] = extract_fecha_texto(text)
 
+    
+    data["titular"] = extract_titular(text)
+
     data["utm_vertices"] = extract_utm_vertices(text)
 
+    # 🔹 NUEVOS CAMPOS
+    data["cedulas_identidad"] = extract_cedulas_identidad(text)
+    data["domicilios"] = extract_domicilios(text)
+    data["juzgados"] = extract_juzgados(text)
+    data["causas_rol"] = extract_causas_rol(text)
+
+    # (aquí ya estabas llenando "titular" en tu versión actual;
+    # si lo tienes en otra función, simplemente asegúrate de seguirlo poniendo aquí)
+
     return data
+
 
